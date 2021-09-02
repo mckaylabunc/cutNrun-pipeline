@@ -403,26 +403,48 @@ rule splitFragments:
 
 # TODO: get readLen from sampleInfo (reference column like sampleSheet.readLen[sampleSheet.sample == wildcards.sample])
 rule makeFragmentBedGraphs:
-	input:
-		ref   = lambda wildcards : 'Bed/' + wildcards.sample + '_' + REFGENOME + '_trim_q5_dupsRemoved_' + wildcards.fragType + '.bed'
-	output:
-		unNorm    = 'BigWig/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}.bg',
-		rpgcNorm  = 'BigWig/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}_rpgcNorm.bg'
-	params:
-		genomeSize = genomeSize,
-		chromSize_Path = chromSize_Path,
-		readLen = readLen
-	envmodules:
-		modules['bedtoolsVer']
-	shell:
-		"""
-		# Count reads in spike-in & inputs for normalization
-		readCount=$(wc -l {input.ref} | sed -e 's/^  *//' -e 's/  */,/g' | cut -d , -f 1)
-		rpgcScale=$(echo "scale=5; {params.genomeSize}/(${{readCount}} * {params.readLen})" | bc)
+  input:
+   ref   = lambda wildcards : 'Bed/' + wildcards.sample + '_' + REFGENOME + '_trim_q5_dupsRemoved_' + wildcards.fragType + '.bed'
+  output:
+   unNorm    = 'BigWig/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}.bg',
+   rpgcNorm  = 'BigWig/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}_rpgcNorm.bg'
+  params:
+   genomeSize = genomeSize,
+   chromSize_Path = chromSize_Path,
+   readLen = readLen
+  envmodules:
+   modules['bedtoolsVer']
+  shell:
+    """
+    # Count reads in spike-in & inputs for normalization
+    readCount=$(wc -l {input.ref} | sed -e 's/^  *//' -e 's/  */,/g' | cut -d , -f 1)
+    rpgcScale=$(echo "scale=5; {params.genomeSize}/(${{readCount}} * {params.readLen})" | bc)
 
-		bedtools genomecov -i {input.ref} -bga -g {params.chromSize_Path} > {output.unNorm}
-		bedtools genomecov -i {input.ref} -bga -g {params.chromSize_Path} -scale ${{rpgcScale}} > {output.rpgcNorm}
-		"""
+    bedtools genomecov -i {input.ref} -bga -g {params.chromSize_Path} > {output.unNorm}
+    bedtools genomecov -i {input.ref} -bga -g {params.chromSize_Path} -scale ${{rpgcScale}} > {output.rpgcNorm}
+    """
+
+#rule makeFragmentBedGraphs:
+#	input:
+#		ref   = lambda wildcards : 'Bed/' + wildcards.sample + '_' + REFGENOME + '_trim_q5_dupsRemoved_' + wildcards.fragType + '.bed'
+#	output:
+#		unNorm    = 'BigWig/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}.bg',
+#		rpgcNorm  = 'BigWig/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}_rpgcNorm.bg'
+#	params:
+#		genomeSize = genomeSize,
+#		chromSize_Path = chromSize_Path,
+#		readLen = readLen
+#	envmodules:
+#		modules['bedtoolsVer']
+#	shell:
+#		"""
+#		# Count reads in spike-in & inputs for normalization
+#		readCount=$(wc -l {input.ref} | sed -e 's/^  *//' -e 's/  */,/g' | cut -d , -f 1)
+#		rpgcScale=$(echo "scale=5; {params.genomeSize}/(${{readCount}} * {params.readLen})" | bc)
+#
+#		bedtools genomecov -i {input.ref} -bga -g {params.chromSize_Path} > {output.unNorm}
+#		bedtools genomecov -i {input.ref} -bga -g {params.chromSize_Path} -scale ${{rpgcScale}} > {output.rpgcNorm}
+#		"""
 
 rule makeSpikeNormFragmentBedGraphs:
 	input:
