@@ -107,10 +107,14 @@ rule all:
 		expand("Fastq/{sample}_R{num}_trim.fastq.gz", sample = sampleSheet.baseName, num = ['1','2']),
 		expand("Sam/{sample}_{species}_trim.sam", sample = sampleSheet.baseName, species = combinedGenome),
 		expand("Bam/{sample}_{species}_trim_q5_dupsRemoved.{ftype}", sample = sampleSheet.baseName, species = speciesList, ftype = {"bam", "bam.bai"}),
+		expand("Bam/{sample}-pooled_{species}_trim_q5_dupsRemoved.{ftype}", sample = sampleSheet.baseName, species = speciesList, ftype = {"bam", "bam.bai"}),
 		expand("Logs/{sample}_{species}_trim_q5_dupsRemoved_genomeStats.tsv", sample = sampleSheet.baseName, species = combinedGenome),
 		expand("BigWig/{sample}_{species}_trim_q5_dupsRemoved_{fragType}{normType}.{ftype}", sample = sampleSheet.baseName, species = REFGENOME, fragType = fragTypes, normType = normTypeList, ftype = {"bw", "bg"}),
+		expand("BigWig/{sample}-pooled_{species}_trim_q5_dupsRemoved_{fragType}{normType}.{ftype}", sample = sampleSheet.baseName, species = REFGENOME, fragType = fragTypes, normType = normTypeList, ftype = {"bw", "bg"}),
 		expand("Peaks/{sample}_{species}_trim_q5_dupsRemoved_{fragType}_peaks.narrowPeak", sample = sampleSheet.baseName, species = REFGENOME, fragType = fragTypes),
+		expand("Peaks/{sample}-pooled_{species}_trim_q5_dupsRemoved_{fragType}_peaks.narrowPeak", sample = sampleSheet.baseName, species = REFGENOME, fragType = fragTypes),
 		expand('Threshold_PeakCalls/{sample}_{species}_trim_q5_dupsRemoved_{fragType}{normType}_thresholdPeaks.bed', sample = sampleSheet.baseName, species = REFGENOME, fragType = fragTypes, normType = normTypeList),
+		expand('Threshold_PeakCalls/{sample}-pooled_{species}_trim_q5_dupsRemoved_{fragType}{normType}_thresholdPeaks.bed', sample = sampleSheet.baseName, species = REFGENOME, fragType = fragTypes, normType = normTypeList),
 		expand('FastQC/{sample}_R1_fastqc.html', sample = sampleSheet.baseName),
 		expand('FastQC/{sample}_R1_trim_fastqc.html', sample = sampleSheet.baseName),
 		expand('FQscreen/{sample}_R1_trim_screen.txt', sample = sampleSheet.baseName),
@@ -118,6 +122,7 @@ rule all:
 		"multiqc_report.html",
 		expand('Plots/FragDistInPeaks/{sample}_{REFGENOME}_trim_q5_allFrags_fragDistPlot.png', sample = sampleSheet.baseName, REFGENOME = REFGENOME),
 		expand('BigWig/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}_rpgcNorm_zNorm.bw', sample = sampleSheet.baseName, REFGENOME = REFGENOME, fragType = fragTypes),
+		expand('BigWig/{sample}-pooled_{REFGENOME}_trim_q5_dupsRemoved_{fragType}_rpgcNorm_zNorm.bw', sample = sampleSheet.baseName, REFGENOME = REFGENOME, fragType = fragTypes),
 		expand("AlignmentStats/{sample}_{species}_trim.tsv", sample = sampleSheet.baseName, species = combinedGenome),
 		expand("AlignmentStats/{sample}_{species}_trim_q5.tsv", sample = sampleSheet.baseName, species = combinedGenome),
 		expand("AlignmentStats/{sample}_{species}_trim_q5_dupsRemoved.tsv", sample = sampleSheet.baseName, species = combinedGenome)
@@ -243,6 +248,7 @@ rule align:
 		"""
 		bowtie2 --seed 123 -p {threads} -q --local --very-sensitive-local --no-unal --no-mixed --no-discordant --phred33 -I 10 -X 700 -x {params.refgenome} -1 {input.r1} -2 {input.r2} -S {output.sam} 2> {output.logInfo}
 		"""
+
 # TODO: merge w/ align rule
 rule convertToBam:
 	input:
@@ -287,16 +293,30 @@ rule markDups:
 # TODO: remove dups in markDups rule
 rule removeDups:
 	input:
-		'Bam/{sample}_' + combinedGenome + '_trim_q5_dupsMarked.bam'
+		'Bam/{sample, (!?-pooled)}_' + combinedGenome + '_trim_q5_dupsMarked.bam'
 	output:
 		bam = 'Bam/{sample}_' +  combinedGenome + '_trim_q5_dupsRemoved.bam',
 		index = 'Bam/{sample}_' + combinedGenome + '_trim_q5_dupsRemoved.bam.bai'
+	wildcard_constraints:
+		sample ="((?!-pooled).)*"
 	envmodules:
 		modules['samtoolsVer']
 	shell:
 		"""
 		samtools view -@ 4 -bF 0x400 {input} > {output.bam} &&
 		samtools index {output.bam} {output.index}
+		"""
+
+rule pool_reps:
+	input:
+		expand("Bam/{sample}_" + combinedGenome + "_trim_q5_dupsRemoved.bam", sample = sampleSheet.baseName)
+	output:
+		bam = "Bam/{sample}-pooled_" + combinedGenome + "_trim_q5_dupsRemoved.bam",
+		index = "Bam/{sample}-pooled_" + combinedGenome + "_trim_q5_dupsRemoved.bam.bai"
+	shell:
+		"""
+		samtools merge {input} > {output.bam}
+		samtools index {output.bam} > {output.index}
 		"""
 
 rule collect_genome_align_stats:
