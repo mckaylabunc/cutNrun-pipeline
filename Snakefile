@@ -112,9 +112,13 @@ rule all:
 		expand("Peaks/{sample}_{species}_trim_q5_dupsRemoved_{fragType}_peaks.narrowPeak", sample = sampleSheet.baseName, species = REFGENOME, fragType = fragTypes),
 		expand('Threshold_PeakCalls/{sample}_{species}_trim_q5_dupsRemoved_{fragType}{normType}_thresholdPeaks.bed', sample = sampleSheet.baseName, species = REFGENOME, fragType = fragTypes, normType = normTypeList),
 		expand('FastQC/{sample}_R1_fastqc.html', sample = sampleSheet.baseName),
+		#expand('FastQC/{sample}_R2_fastqc.html', sample = sampleSheet.baseName),
 		expand('FastQC/{sample}_R1_trim_fastqc.html', sample = sampleSheet.baseName),
+		#expand('FastQC/{sample}_R2_trim_fastqc.html', sample = sampleSheet.baseName),
 		expand('FQscreen/{sample}_R1_trim_screen.txt', sample = sampleSheet.baseName),
+		#expand('FQscreen/{sample}_R2_trim_screen.txt', sample = sampleSheet.baseName),
 		expand('FQscreen/{sample}_R1_trim_screen.html', sample = sampleSheet.baseName),
+		#expand('FQscreen/{sample}_R2_trim_screen.html', sample = sampleSheet.baseName),
 		"multiqc_report.html",
 		expand('Plots/FragDistInPeaks/{sample}_{REFGENOME}_trim_q5_allFrags_fragDistPlot.png', sample = sampleSheet.baseName, REFGENOME = REFGENOME),
 		expand('BigWig/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}_rpgcNorm_zNorm.bw', sample = sampleSheet.baseName, REFGENOME = REFGENOME, fragType = fragTypes),
@@ -136,16 +140,24 @@ rule combine_technical_reps:
 		cat {input.r2} > {output.r2}
 		"""
 
+#Pipeline currently only passes R1 to fastqc to save time 
+# to get stats on both reads use commented lines below (all 3 fastqc rules) and in rule all 
 rule fastQC:
 	input:
 		'Fastq/{sample}_R1.fastq.gz',
+		#r1 = "Fastq/{sample}_R1.fastq.gz",
+		#r2 = "Fastq/{sample}_R2.fastq.gz"
 	output:
 		'FastQC/{sample}_R1_fastqc.html'
+		#r1 = "Fastq/{sample}_R1_trim.fastq.gz",
+		#r2 = "Fastq/{sample}_R2_trim.fastq.gz"
 	envmodules:
 		modules['fastqcVer']
 	shell:
 		"""
 		fastqc -o ./FastQC/ -f fastq {input}
+		#fastqc -o ./FastQC/ -f fastq {input.r1}
+		#fastqc -o ./FastQC/ -f fastq {input.r2}
 		"""
 
 rule trim_adapter:
@@ -169,21 +181,33 @@ rule trim_adapter:
 rule fastQC_trim:
 	input:
 		'Fastq/{sample}_R1_trim.fastq.gz',
+		#r1 = 'Fastq/{sample}_R1_trim.fastq.gz',
+		#r2 = 'Fastq/{sample}_R2_trim.fastq.gz'
 	output:
 		'FastQC/{sample}_R1_trim_fastqc.html'
-	envmodules:
+		#r1 = 'Fastq/{sample}_R1_trim.fastq.gz',
+		#r2 = 'Fastq/{sample}_R2_trim.fastq.gz'
+envmodules:
 		modules['fastqcVer']
 	shell:
 		"""
 		fastqc -o ./FastQC/ -f fastq {input}
+		#fastqc -o ./FastQC/ -f fastq {input.r1}
+		#fastqc -o ./FastQC/ -f fastq {input.r2}
 		"""
 
 rule fastqScreen:
 	input:
 		'Fastq/{sample}_R1_trim.fastq.gz'
+		#r1 = 'Fastq/{sample}_R1_trim.fastq.gz'
+		#r2 = 'Fastq/{sample}_R2_trim.fastq.gz'
 	output:
 		txt = 'FQscreen/{sample}_R1_trim_screen.txt',
+		#r1_txt = 'FQscreen/{sample}_R1_trim_screen.txt',
+		#r2_txt = 'FQscreen/{sample}_R2_trim_screen.txt',
 		html = 'FQscreen/{sample}_R1_trim_screen.html'
+		#r1_html = 'FQscreen/{sample}_R1_trim_screen.html'
+		#r2_html = 'FQscreen/{sample}_R2_trim_screen.html'
 	params:
 		fqscreenPath = modules['fqscreenPath'],
 		fqscreenConf = modules['fqscreenConf']
@@ -191,6 +215,8 @@ rule fastqScreen:
 	shell:
 		"""
 		{params.fqscreenPath} --threads {threads} --force --aligner bowtie2 -conf {params.fqscreenConf} {input} --outdir ./FQscreen/
+		#{params.fqscreenPath} --threads {threads} --force --aligner bowtie2 -conf {params.fqscreenConf} {input.r1} --outdir ./FQscreen/
+		#{params.fqscreenPath} --threads {threads} --force --aligner bowtie2 -conf {params.fqscreenConf} {input.r2} --outdir ./FQscreen/
 		"""
 
 def get_genome_fastas(config, speciesList):
