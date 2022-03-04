@@ -1,7 +1,5 @@
 import pandas as pd
 import preProcessSampleConfig as pre
-from snakemake.utils import Paramspace
-from sklearn.model_selection import ParameterGrid
 
 configfile: 'config.json'
 
@@ -21,7 +19,6 @@ readLen = config['readLen']
 
 modules = config['module']
 
-seacr_params = Paramspace(pd.DataFrame(list(ParameterGrid({'threshold': [0.001, 0.003, 0.005, 0.01], 'stringency': ["stringent", "relaxed"]}))))
 #########
 # Validation 
 
