@@ -396,6 +396,8 @@ rule splitFragments:
 		bigFrags = 'Bed/{sample}_{REFGENOME}_trim_q5_dupsRemoved_150to700.bed'
 	group:
 		"fragment"
+	resources:
+	    mem_mb=16000
 	shell:
 		"""
 		cut -f 1,2,6,7 {input} | awk -F '\t' '{{print $0, ($3-$2)}}' - > {output.allFrags}
@@ -418,6 +420,8 @@ rule makeFragmentBedGraphs:
 		"fragment"
 	envmodules:
 		modules['bedtoolsVer']
+	resources:
+	    mem_mb=16000
 	shell:
 		"""
 		# Count reads in spike-in & inputs for normalization
@@ -442,6 +446,8 @@ rule makeSpikeNormFragmentBedGraphs:
 		"fragment"
 	envmodules:
 		modules['bedtoolsVer']
+	resources:
+	    mem_mb=16000
 	shell:
 		"""
 		# Count reads in spike-in & inputs for normalization
@@ -521,7 +527,8 @@ rule qcReport:
 		expand("AlignmentStats/{sample}_{species}_trim_q5_dupsRemoved.tsv", sample = sampleSheet.baseName, species = combinedGenome)
 	output:
 		"multiqc_report.html"
-	envmodules: modules['multiqcVer']
+	envmodules:
+	    modules['multiqcVer']
 	shell:
 		"""
 		multiqc . -f -x *.out -x *.err
