@@ -7,6 +7,7 @@ cluster:
     --job-name=smk-{rule}-{wildcards}
     --output=logs/{rule}/{rule}-{wildcards}-%j.out
     --account=rc_dmckay1_pi
+    --time={resources.time}
 default-resources:
   - partition=general
   - mem_mb=8000
@@ -21,4 +22,4 @@ keep-going: True
 rerun-incomplete: True
 printshellcmds: True
 scheduler: greedy
-use-conda: True
+use-envmodules: True
