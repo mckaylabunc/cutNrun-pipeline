@@ -1,0 +1,3 @@
+[submodule "scripts/SEACR"]
+	path = scripts/SEACR
+	url = https://github.com/FredHutch/SEACR.git

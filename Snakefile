@@ -107,7 +107,7 @@ rule all:
 		expand("results/Fastq/{sample}_R{num}_trim.fastq.gz", sample = sampleSheet.baseName, num = ['1','2']),
 		expand("results/Sam/{sample}_{species}_trim.sam", sample = sampleSheet.baseName, species = combinedGenome),
 		expand("results/Bam/{sample}_{species}_trim_q5_dupsRemoved.{ftype}", sample = sampleSheet.baseName, species = speciesList, ftype = {"bam", "bam.bai"}),
-		expand("results/Logs/{sample}_{species}_trim_q5_dupsRemoved_genomeStats.tsv", sample = sampleSheet.baseName, species = combinedGenome),
+		expand("Logs/{sample}_{species}_trim_q5_dupsRemoved_genomeStats.tsv", sample = sampleSheet.baseName, species = combinedGenome),
 		expand("results/BigWig/{sample}_{species}_trim_q5_dupsRemoved_{fragType}{normType}.{ftype}", sample = sampleSheet.baseName, species = REFGENOME, fragType = fragTypes, normType = normTypeList, ftype = {"bw", "bg"}),
 		expand("results/Peaks/{sample}_{species}_trim_q5_dupsRemoved_{fragType}_peaks.narrowPeak", sample = sampleSheet.baseName, species = REFGENOME, fragType = fragTypes),
 		expand('results/Threshold_PeakCalls/{sample}_{species}_trim_q5_dupsRemoved_{fragType}{normType}_thresholdPeaks.bed', sample = sampleSheet.baseName, species = REFGENOME, fragType = fragTypes, normType = normTypeList),
@@ -115,7 +115,7 @@ rule all:
 		expand('results/FastQC/{sample}_R1_trim_fastqc.html', sample = sampleSheet.baseName),
 		expand('results/FQscreen/{sample}_R1_trim_screen.txt', sample = sampleSheet.baseName),
 		expand('results/FQscreen/{sample}_R1_trim_screen.html', sample = sampleSheet.baseName),
-		"multiqc_report.html",
+		"results/multiqc_report.html",
 		expand('results/Plots/FragDistInPeaks/{sample}_{REFGENOME}_trim_q5_allFrags_fragDistPlot.png', sample = sampleSheet.baseName, REFGENOME = REFGENOME),
 		expand('results/BigWig/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}_rpgcNorm_zNorm.bw', sample = sampleSheet.baseName, REFGENOME = REFGENOME, fragType = fragTypes),
 		expand("results/AlignmentStats/{sample}_{species}_trim.tsv", sample = sampleSheet.baseName, species = combinedGenome),
@@ -140,12 +140,12 @@ rule fastQC:
 	input:
 		rules.combine_technical_reps.output.r1
 	output:
-		'FastQC/{sample}_R1_fastqc.html'
+		'results/FastQC/{sample}_R1_fastqc.html'
 	envmodules:
 		modules['fastqcVer']
 	shell:
 		"""
-		fastqc -o ./FastQC/ -f fastq {input}
+		fastqc -o results/FastQC/ -f fastq {input}
 		"""
 
 rule trim_adapter:
@@ -175,22 +175,22 @@ rule fastQC_trim:
 		modules['fastqcVer']
 	shell:
 		"""
-		fastqc -o ./FastQC/ -f fastq {input}
+		fastqc -o results/FastQC/ -f fastq {input}
 		"""
 
 rule fastqScreen:
 	input:
 		rules.trim_adapter.output.r1
 	output:
-		txt = 'FQscreen/{sample}_R1_trim_screen.txt',
-		html = 'FQscreen/{sample}_R1_trim_screen.html'
+		txt = 'results/FQscreen/{sample}_R1_trim_screen.txt',
+		html = 'results/FQscreen/{sample}_R1_trim_screen.html'
 	params:
 		fqscreenPath = modules['fqscreenPath'],
 		fqscreenConf = modules['fqscreenConf']
 	threads: 4
 	shell:
 		"""
-		{params.fqscreenPath} --threads {threads} --force --aligner bowtie2 -conf {params.fqscreenConf} {input} --outdir ./FQscreen/
+		{params.fqscreenPath} --threads {threads} --force --aligner bowtie2 -conf {params.fqscreenConf} {input} --outdir results/FQscreen/
 		"""
 
 def get_genome_fastas(config, speciesList):
@@ -211,8 +211,8 @@ rule bowtie2index:
 	    	expand("results/Bowtie2Index/{genome}.{num}.bt2", genome = combinedGenome, num = ["1", "2", "3", "4", "rev.1", "rev.2"])
 	params:
 		module = modules['bowtie2Ver'],
-		prefix = "Bowtie2Index/" + combinedGenome,
-	    	combined_fa = "Bowtie2Index/" + combinedGenome +  ".fa"
+		prefix = "results/Bowtie2Index/" + combinedGenome,
+	    	combined_fa = "results/Bowtie2Index/" + combinedGenome +  ".fa"
 	run:
 	    init = True
 	    for genome, fasta in genome_fastas.items():
@@ -236,7 +236,7 @@ rule align:
 	threads: 8
 	params:
 		#refgenome = lambda wildcards: indexDict[wildcards.species],
-		refgenome = "Bowtie2Index/" + combinedGenome
+		refgenome = "results/Bowtie2Index/" + combinedGenome
 	envmodules:
 		modules['bowtie2Ver']
 	resources:
@@ -276,9 +276,9 @@ rule markDups:
 	input:
 		'results/Bam/{sample}_{species}_trim_q5.bam'
 	output:
-		sorted = 'Bam/{sample}_{species}_trim_q5_sorted.bam',
-		markedDups = 'Bam/{sample}_{species}_trim_q5_dupsMarked.bam',
-		PCRdups = "PCRdups/{sample}_{species}_trim_PCR_duplicates"
+		sorted = 'results/Bam/{sample}_{species}_trim_q5_sorted.bam',
+		markedDups = 'results/Bam/{sample}_{species}_trim_q5_dupsMarked.bam',
+		PCRdups = "results/PCRdups/{sample}_{species}_trim_PCR_duplicates"
 	params:
 		picardPath = modules['picardPath']
 	envmodules:
@@ -395,7 +395,7 @@ rule convertBamToBed:
 
 rule splitFragments:
 	input:
-	    	rules.convertBamToBed.output
+		'results/Bed/{sample}_{REFGENOME}_trim_q5_dupsRemoved.bed'
 	output:
 		allFrags = 'results/Bed/{sample}_{REFGENOME}_trim_q5_dupsRemoved_allFrags.bed',
 		smallFrags = 'results/Bed/{sample}_{REFGENOME}_trim_q5_dupsRemoved_20to120.bed',
@@ -414,7 +414,7 @@ rule splitFragments:
 # TODO: get readLen from sampleInfo (reference column like sampleSheet.readLen[sampleSheet.sample == wildcards.sample])
 rule makeFragmentBedGraphs:
 	input:
-		ref   = lambda wildcards : 'results/Bed/' + wildcards.sample + '_' + REFGENOME + '_trim_q5_dupsRemoved_' + wildcards.fragType + '.bed'
+		ref = 'results/Bed/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}.bed'
 	output:
 		unNorm    = 'results/BigWig/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}.bg',
 		rpgcNorm  = 'results/BigWig/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}_rpgcNorm.bg'
@@ -440,8 +440,7 @@ rule makeFragmentBedGraphs:
 
 rule makeSpikeNormFragmentBedGraphs:
 	input:
-		ref   = lambda wildcards : 'results/Bed/' + wildcards.sample + '_' + REFGENOME + '_trim_q5_dupsRemoved_' + wildcards.fragType + '.bed',
-		#spike = lambda wildcards : 'Bam/' + wildcards.sample + '_' + SPIKEGENOME + '_trim_q5_dupsRemoved.bam'
+		ref = 'results/Bed/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}.bed',
 		spike = 'results/Bam/{sample}_{spikeGenome}_trim_q5_dupsRemoved.bam'
 	output:
 		spikeNorm = 'results/BigWig/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}_{spikeGenome}-spikeNorm.bg'
@@ -515,7 +514,7 @@ rule callPeaks:
 		'results/Peaks/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}_peaks.narrowPeak'
 	params:
 		control = controlDNAPath,
-		prefix = 'Peaks/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}'
+		prefix = 'results/Peaks/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}'
 	envmodules:
 		modules['macsVer']
 	shell:
@@ -532,7 +531,7 @@ rule qcReport:
 		expand("results/AlignmentStats/{sample}_{species}_trim_q5.tsv", sample = sampleSheet.baseName, species = combinedGenome),
 		expand("results/AlignmentStats/{sample}_{species}_trim_q5_dupsRemoved.tsv", sample = sampleSheet.baseName, species = combinedGenome)
 	output:
-		"multiqc_report.html"
+		"results/multiqc_report.html"
 	envmodules:
 	    modules['multiqcVer']
 	shell:

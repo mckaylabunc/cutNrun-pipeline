@@ -6,3 +6,7 @@ sampleInfo.tsv
 poolSampleSheet.tsv
 sampleSheet.tsv
 cmu
+Logs/
+logs/
+results/
+multiqc_data/
