@@ -1,3 +1,4 @@
+*.auc*
 *.fastq.gz
 *.swp
 .snakemake/

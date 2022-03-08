@@ -16,7 +16,9 @@ chromSize_Path  = config['genome'][REFGENOME]['chrSize']
 genomeSize = config['genome'][REFGENOME]['genomeSize']
 readLen = config['readLen']
 
+
 modules = config['module']
+
 #########
 # Validation 
 
@@ -62,8 +64,8 @@ sampleSheet['bam']           = expand("results/Bam/{sample}_{species}_trim_q5_du
 for frag, norm in zip(fragTypes, normTypeList):
 	# Add column per peak call list
 	peak_colName = 'peak_{frag}'.format(frag = frag)
-	sampleSheet[peak_colName] = expand("results/Peaks/{sample}_{species}_trim_q5_dupsRemoved_{fragType}_peaks.narrowPeak", sample = sampleSheet.baseName, species = REFGENOME, fragType = frag)
-	
+	sampleSheet[peak_colName] = expand("results/Peaks/MACS2/{sample}_{species}_trim_q5_dupsRemoved_{fragType}_peaks.narrowPeak", sample = sampleSheet.baseName, species = REFGENOME, fragType = frag)
+
 	bed_colName = 'bed_{frag}'.format(frag = frag)
 	sampleSheet[bed_colName] = expand('results/Bed/{sample}_{species}_trim_q5_dupsRemoved_{fragType}.bed', sample = sampleSheet.baseName, species = REFGENOME, fragType = frag)
 	
@@ -110,6 +112,7 @@ rule all:
 		expand("Logs/{sample}_{species}_trim_q5_dupsRemoved_genomeStats.tsv", sample = sampleSheet.baseName, species = combinedGenome),
 		expand("results/BigWig/{sample}_{species}_trim_q5_dupsRemoved_{fragType}{normType}.{ftype}", sample = sampleSheet.baseName, species = REFGENOME, fragType = fragTypes, normType = normTypeList, ftype = {"bw", "bg"}),
 		expand("results/Peaks/{sample}_{species}_trim_q5_dupsRemoved_{fragType}_peaks.narrowPeak", sample = sampleSheet.baseName, species = REFGENOME, fragType = fragTypes),
+	    	expand("results/Peaks/SEACR/{sample}_{species}_{fragType}_{spikeGenome}_SEACR-peaks.stringent.bed", sample=sampleSheet.baseName, species = REFGENOME, fragType = fragTypes, spikeGenome = SPIKEGENOME),
 		expand('results/Threshold_PeakCalls/{sample}_{species}_trim_q5_dupsRemoved_{fragType}{normType}_thresholdPeaks.bed', sample = sampleSheet.baseName, species = REFGENOME, fragType = fragTypes, normType = normTypeList),
 		expand('results/FastQC/{sample}_R1_fastqc.html', sample = sampleSheet.baseName),
 		expand('results/FastQC/{sample}_R1_trim_fastqc.html', sample = sampleSheet.baseName),
@@ -522,6 +525,25 @@ rule callPeaks:
 		macs2 callpeak -f BEDPE -c {params.control} -n {params.prefix} -g 121400000 -t {input}  --nomodel --seed 123
 		"""
 
+
+rule callPeaks_SEACR:
+	input:
+		'results/BigWig/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}_{spikeGenome}-spikeNorm.bg'
+	output:
+	    	'results/Peaks/SEACR/{sample}_{REFGENOME}_{fragType}_{spikeGenome}_SEACR-peaks.stringent.bed'
+	params:
+		threshold = 0.003, # top 0.3% of peaks; empirically determined; IgG preferable
+		prefix = 'Peaks/SEACR/{sample}_{REFGENOME}_{fragType}_{spikeGenome}_SEACR-peaks'
+	log:
+	    	"Logs/SEACR/{sample}_{REFGENOME}_{fragType}_{spikeGenome}.log"
+	envmodules:
+	    	modules["rVer"]
+	shell:
+	    	"""
+		bash scripts/SEACR/SEACR_1.3.sh {input} {params.threshold} non stringent {output} &>> {log}
+		"""
+
+
 rule qcReport:
 	input:
 		expand("results/Bam/{sample}_{species}_trim_q5_dupsRemoved.{ftype}", sample = sampleSheet.baseName, species = speciesList, ftype = ['bam', 'bam.bai']),
@@ -542,7 +564,7 @@ rule qcReport:
 rule makeFragmentSizePlots_inPeaks:
 	input:
 		bed = 'results/Bed/{sample}_{REFGENOME}_trim_q5_dupsRemoved_allFrags.bed',
-		peaks = 'results/Peaks/{sample}_{REFGENOME}_trim_q5_dupsRemoved_allFrags_peaks.narrowPeak'
+		peaks = 'results/Peaks/MACS2/{sample}_{REFGENOME}_trim_q5_dupsRemoved_allFrags_peaks.narrowPeak'
 	output:
 		'results/Plots/FragDistInPeaks/{sample}_{REFGENOME}_trim_q5_allFrags_fragDistPlot.png'
 	envmodules:
