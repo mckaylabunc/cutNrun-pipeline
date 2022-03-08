@@ -10,3 +10,4 @@ Logs/
 logs/
 results/
 multiqc_data/
+slurmOut/

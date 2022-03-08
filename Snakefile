@@ -92,7 +92,7 @@ for fragNorm in fragNormCombn:
 	thresh_colName = 'threshold_peaks_{fragNorm}'.format(fragNorm = fragNorm.replace("-", "_"))
 	sampleSheet[thresh_colName] = expand('results/Threshold_PeakCalls/{sample}_{species}_trim_q5_dupsRemoved_{fragNorm}_thresholdPeaks.bed', sample = sampleSheet.baseName, species = REFGENOME, fragNorm = fragNorm)
 
-sampleSheet.to_csv('sampleSheet.tsv', sep = "\t", index = False)
+sampleSheet.to_csv('results/sampleSheet.tsv', sep = "\t", index = False)
 
 
 ####
@@ -536,7 +536,7 @@ rule qcReport:
 	    modules['multiqcVer']
 	shell:
 		"""
-		multiqc . -f -x *.out -x *.err
+		multiqc results/ -f -x *.out -x *.err --outdir results/
 		"""
 
 rule makeFragmentSizePlots_inPeaks:

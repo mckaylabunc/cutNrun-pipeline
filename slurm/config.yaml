@@ -1,13 +1,14 @@
 cluster:
-  mkdir -p logs/{rule} &&
+  mkdir -p slurmOut/ &&
   sbatch
     --partition={resources.partition}
     --cpus-per-task={threads}
     --mem={resources.mem_mb}
-    --output=slurmOut/{rule}/{rule}-%j.out
-    --err=slurmOut/{rule}/{rule}-%j.err
+    --output=slurmOut/%j.out
+    --error=slurmOut/%j.err
     --account=rc_dmckay1_pi
     --time={resources.time}
+    --parsable
 default-resources:
   - partition=general
   - mem_mb=8000
@@ -23,3 +24,4 @@ rerun-incomplete: True
 printshellcmds: True
 scheduler: greedy
 use-envmodules: True
+cluster-status: status-sacct.sh
