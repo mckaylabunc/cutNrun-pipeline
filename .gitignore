@@ -1,3 +1,4 @@
+*.auc*
 *.fastq.gz
 *.swp
 .snakemake/
@@ -6,3 +7,20 @@ sampleInfo.tsv
 poolSampleSheet.tsv
 sampleSheet.tsv
 cmu
+Fastq/
+Sam/
+Bam/
+Logs/
+BigWig/
+Peaks/
+Threshold_PeakCalls/
+FastQC/
+FQscreen/
+Plots/
+AlignmentStats/
+multiqc_data/
+slurmOut/
+Bed/
+Bowtie2Index/
+PCRdups/
+multiqc_report.html

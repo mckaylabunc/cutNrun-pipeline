@@ -16,7 +16,9 @@ chromSize_Path  = config['genome'][REFGENOME]['chrSize']
 genomeSize = config['genome'][REFGENOME]['genomeSize']
 readLen = config['readLen']
 
+
 modules = config['module']
+
 #########
 # Validation 
 
@@ -62,7 +64,7 @@ sampleSheet['bam']           = expand("Bam/{sample}_{species}_trim_q5_dupsRemove
 for frag, norm in zip(fragTypes, normTypeList):
 	# Add column per peak call list
 	peak_colName = 'peak_{frag}'.format(frag = frag)
-	sampleSheet[peak_colName] = expand("Peaks/{sample}_{species}_trim_q5_dupsRemoved_{fragType}_peaks.narrowPeak", sample = sampleSheet.baseName, species = REFGENOME, fragType = frag)
+	sampleSheet[peak_colName] = expand("Peaks/MACS2/{sample}_{species}_trim_q5_dupsRemoved_{fragType}_peaks.narrowPeak", sample = sampleSheet.baseName, species = REFGENOME, fragType = frag)
 	
 	bed_colName = 'bed_{frag}'.format(frag = frag)
 	sampleSheet[bed_colName] = expand('Bed/{sample}_{species}_trim_q5_dupsRemoved_{fragType}.bed', sample = sampleSheet.baseName, species = REFGENOME, fragType = frag)
@@ -109,7 +111,8 @@ rule all:
 		expand("Bam/{sample}_{species}_trim_q5_dupsRemoved.{ftype}", sample = sampleSheet.baseName, species = speciesList, ftype = {"bam", "bam.bai"}),
 		expand("Logs/{sample}_{species}_trim_q5_dupsRemoved_genomeStats.tsv", sample = sampleSheet.baseName, species = combinedGenome),
 		expand("BigWig/{sample}_{species}_trim_q5_dupsRemoved_{fragType}{normType}.{ftype}", sample = sampleSheet.baseName, species = REFGENOME, fragType = fragTypes, normType = normTypeList, ftype = {"bw", "bg"}),
-		expand("Peaks/{sample}_{species}_trim_q5_dupsRemoved_{fragType}_peaks.narrowPeak", sample = sampleSheet.baseName, species = REFGENOME, fragType = fragTypes),
+		expand("Peaks/MACS2/{sample}_{species}_trim_q5_dupsRemoved_{fragType}_peaks.narrowPeak", sample = sampleSheet.baseName, species = REFGENOME, fragType = fragTypes),
+	    	expand("Peaks/SEACR/{sample}_{species}_{fragType}_{spikeGenome}_SEACR-peaks.stringent.bed", sample=sampleSheet.baseName, species = REFGENOME, fragType = fragTypes, spikeGenome = SPIKEGENOME),
 		expand('Threshold_PeakCalls/{sample}_{species}_trim_q5_dupsRemoved_{fragType}{normType}_thresholdPeaks.bed', sample = sampleSheet.baseName, species = REFGENOME, fragType = fragTypes, normType = normTypeList),
 		expand('FastQC/{sample}_R1_fastqc.html', sample = sampleSheet.baseName),
 		expand('FastQC/{sample}_R1_trim_fastqc.html', sample = sampleSheet.baseName),
@@ -508,16 +511,35 @@ rule callPeaks:
 	input:
 		'Bed/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}.bed'
 	output:
-		'Peaks/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}_peaks.narrowPeak'
+		'Peaks/MACS2/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}_peaks.narrowPeak'
 	params:
 		control = controlDNAPath,
-		prefix = 'Peaks/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}'
+		prefix = 'Peaks/MACS2/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}'
 	envmodules:
 		modules['macsVer']
 	shell:
 		"""
 		macs2 callpeak -f BEDPE -c {params.control} -n {params.prefix} -g 121400000 -t {input}  --nomodel --seed 123
 		"""
+
+
+rule callPeaks_SEACR:
+	input:
+		'BigWig/{sample}_{REFGENOME}_trim_q5_dupsRemoved_{fragType}_{spikeGenome}-spikeNorm.bg'
+	output:
+	    	'Peaks/SEACR/{sample}_{REFGENOME}_{fragType}_{spikeGenome}_SEACR-peaks.stringent.bed'
+	params:
+		threshold = 0.003, # top 0.3% of peaks; empirically determined; IgG preferable
+		prefix = 'Peaks/SEACR/{sample}_{REFGENOME}_{fragType}_{spikeGenome}_SEACR-peaks'
+	log:
+	    	"Logs/SEACR/{sample}_{REFGENOME}_{fragType}_{spikeGenome}.log"
+	envmodules:
+	    	modules["rVer"]
+	shell:
+	    	"""
+		bash scripts/SEACR/SEACR_1.3.sh {input} {params.threshold} non stringent {output} &>> {log}
+		"""
+
 
 rule qcReport:
 	input:
@@ -538,7 +560,7 @@ rule qcReport:
 rule makeFragmentSizePlots_inPeaks:
 	input:
 		bed = 'Bed/{sample}_{REFGENOME}_trim_q5_dupsRemoved_allFrags.bed',
-		peaks = 'Peaks/{sample}_{REFGENOME}_trim_q5_dupsRemoved_allFrags_peaks.narrowPeak'
+		peaks = 'Peaks/MACS2/{sample}_{REFGENOME}_trim_q5_dupsRemoved_allFrags_peaks.narrowPeak'
 	output:
 		'Plots/FragDistInPeaks/{sample}_{REFGENOME}_trim_q5_allFrags_fragDistPlot.png'
 	envmodules:
